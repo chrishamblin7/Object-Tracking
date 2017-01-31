@@ -12,10 +12,10 @@ save_data = true;
 file_name = 'test';
 
 
-dot_num = 5; %number of dots in Grid
+dot_num = 4; %number of dots in Grid
 
 
-require_response = true; %require response? make false to show trials quickly
+require_response = false; %require response? make false to show trials quickly
 
 %open psychtoolbox window
 window.bgColor = [80 80 80];
@@ -26,7 +26,7 @@ Screen('TextSize', onScreen, 40);
 
 
 %experiment parameters
-display_type=[2,1]; %which tracking task is displayed on each side (0 =nothing, 1=spinner, 2=grid)
+display_type=[3,2]; %which tracking task is displayed on each side (0 =nothing, 1=spinner, 2=grid, 3=noisy spinner)
 spin_speed = 350; %deg/s
 fr = 60; %refresh rate Hz
 duration = 6; %number of seconds to spin for
@@ -44,18 +44,40 @@ gy=[yo+200, yo+200, yo+200, yo, yo, yo, yo-200, yo-200, yo-200]; %y coordinates 
 perm_num= 25; %number of permutations grid goes through
 tranmat=[2,4;1,3;2,6;1,7;0,0;3,9;4,8;7,9;6,8]; %every row shows allowed next transition spaces
 r = 200; %radius of spinners
+if display_type(1)==3 || display_type(2)==3
+    r = r*2/3;
+end
 dot_size = 40;
 for cm = 1:2
    color_matrix{cm}= zeros(3,dot_num); %dot colors
 end
 trial_count = 0;
 
+
 for trial_num = 1:nTrials
+    %generate random frequency and amplitude varying sin function for noisy
+    %spinner
+    x=linspace(0,1000,10000);
+    y=rand(7,3);
+    z1=4*y(1,1)*sin(10*y(1,2)*x+3*y(1,3));
+    z2=4*y(2,1)*sin(8*y(2,2)*x+3*y(2,3));
+    z3=4*y(3,1)*sin(7*y(3,2)*x+3*y(3,3));
+    z4=2*y(4,1)*sin(3*y(4,2)*x+3*y(4,3));
+    z5=2*y(5,1)*sin(y(5,2)*x+3*y(5,3));
+    z6=3*y(6,1)*cos(y(6,2)*x+3*y(5,3));
+    z7=y(7,1)*cos(7*y(3,2)*x+3*y(7,3));
+    z=z1+z2+z3+z4+z5+z6+z7;
+    z=z*r/(3*max(z))*1.3;
+    
+    
+
    
    gidmatl=Generate_gidmat(dot_num, perm_num, tranmat); %left gidmat
    gidmatr=Generate_gidmat(dot_num,perm_num,tranmat); %right gidmat
    [movmatxl, movmatyl]=Generate_Movmat(gidmatl,gx1,gy,fr*duration); %left movmat
    [movmatxr, movmatyr]=Generate_Movmat(gidmatr, gx2, gy, fr*duration); %right movmat
+   
+   
    
    trial_count = trial_count + 1;
    acc = [NaN, NaN];
@@ -91,14 +113,14 @@ for trial_num = 1:nTrials
    HideCursor;
    for i = 1:2
       fn=1;
-      Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
+      Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
       
       fixation(onScreen, xo, yo);
       Screen('Flip', onScreen);
       WaitSecs(.5);
       
-      Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
-      Draw_Display(display_type, color_matrix_td, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
+      Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
+      Draw_Display(display_type, color_matrix_td, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
       fixation(onScreen, xo, yo);
       Screen('Flip', onScreen);
       WaitSecs(.5);
@@ -123,14 +145,14 @@ for trial_num = 1:nTrials
       fsldc(cd==1/spin_change) = 0;
         
       
-      Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
+      Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
       
       %fade target dots from bg_color to black
       if fn < fr * fade_time;
          for cm = 1:2
             color_matrix_td{cm}(:,targs) = repmat(fade_matrix(fn),3,1);
          end
-         Draw_Display(display_type, color_matrix_td, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
+         Draw_Display(display_type, color_matrix_td, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
       end
       
       fixation(onScreen, xo, yo);
@@ -190,8 +212,8 @@ for trial_num = 1:nTrials
                      color_matrix_final{1}(:, clicked(1)) = [0,255,0]';
                      if ~resp2
                         %draw resp1 and blank resp2
-                        Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
-                        Draw_Display(display_type, color_matrix_resp, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
+                        Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
+                        Draw_Display(display_type, color_matrix_resp, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
                         fixation(onScreen, xo, yo);
                         Screen('Flip', onScreen);
                      end
@@ -204,8 +226,8 @@ for trial_num = 1:nTrials
                      color_matrix_final{1}(:, clicked(1)) = [255,0,0]';
                      if ~resp2
                         %draw resp1 and blank resp2
-                        Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
-                        Draw_Display(display_type, color_matrix_resp, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
+                        Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
+                        Draw_Display(display_type, color_matrix_resp, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
                         fixation(onScreen, xo, yo);
                         Screen('Flip', onScreen);
                      end
@@ -229,8 +251,8 @@ for trial_num = 1:nTrials
                      color_matrix_final{2}(:, clicked(2)) = [0,255,0]';
                      if ~resp1
                         %draw resp2 and blank resp1
-                        Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
-                        Draw_Display(display_type, color_matrix_resp, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
+                        Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
+                        Draw_Display(display_type, color_matrix_resp, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
                         fixation(onScreen, xo, yo);
                         Screen('Flip', onScreen);
                      end
@@ -243,8 +265,8 @@ for trial_num = 1:nTrials
                      color_matrix_final{2}(:, clicked(2)) = [255,0,0]';
                      if ~resp1
                         %draw resp2 and blank resp1
-                        Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
-                        Draw_Display(display_type, color_matrix_resp, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
+                        Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
+                        Draw_Display(display_type, color_matrix_resp, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
                         fixation(onScreen, xo, yo);
                         Screen('Flip', onScreen);
                      end
@@ -256,8 +278,8 @@ for trial_num = 1:nTrials
       end
       
       
-      Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
-      Draw_Display(display_type, color_matrix_final, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn);
+      Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
+      Draw_Display(display_type, color_matrix_final, dot_num, dot_size-2, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z);
       fixation(onScreen, xo, yo);
       Screen('Flip', onScreen);
       WaitSecs(1);
@@ -291,6 +313,16 @@ end
 %     y+r*sind(ori), y-r*sind(ori), y+r*sind(ori+90), y-r*sind(ori+90)];
 Screen('DrawDots', onScreen, dot_locs, dot_size, color_matrix, [], 1);
 end
+
+%function for dot rotation with noisy sin wave
+function Nspinner(onScreen, x, y, ori, r, dot_size, color_matrix, dot_num, z, fn)
+for dl = 1:dot_num
+    dot_locs(1,dl) = x +(r+z(417*(dl-1)+fn))*cosd(ori + (360/dot_num)*(dl-1));
+    dot_locs(2, dl) = y - (r+z(417*(dl-1)+fn))*sind(ori + (360/dot_num)*(dl-1));
+end
+Screen('DrawDots', onScreen, dot_locs, dot_size, color_matrix, [], 1);
+end
+    
 
 %Functions to Draw Text
 function Draw_Text(onScreen, txt, x, y, text_color)
@@ -485,7 +517,7 @@ end
 Screen('DrawDots',onScreen, dot_locs, dot_size, color_matrix, [], 1)
 end
 
-function Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn)
+function Draw_Display(display_type, color_matrix, dot_num, dot_size, onScreen, sx1, sx2, sy, ori, r, movmatxl, movmatyl, movmatxr, movmatyr, fn, z)
 % Draw two displays simultaneously, kind depends on display_type
 if display_type(1)==1 
     Spinner(onScreen, sx1, sy, ori(1), r, dot_size, color_matrix{1}, dot_num)
@@ -499,5 +531,11 @@ end
 if display_type(2)==2
     Draw_Grid(onScreen, movmatxr, movmatyr, fn, dot_size, color_matrix{2})
 end
-
+if display_type(1)==3
+    Nspinner(onScreen, sx1, sy, ori(1), r, dot_size, color_matrix{1}, dot_num, z, fn)
+end
+if display_type(2)==3
+    Nspinner(onScreen, sx2, sy, ori(2), r, dot_size, color_matrix{2}, dot_num, z, fn)
+end
+    
 end
